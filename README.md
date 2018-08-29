@@ -5,7 +5,7 @@ Developed and tested with:
 * Python 2.7
 * Tensorflow 1.3
 
-In this repository, we share the models we implemented. From the paper, we have:
+In this repository, we share the classification models we implemented. From the paper, we have:
 * Image-only
 * Text-CNN (from Kim 2014)
 * Embedding-Concat
