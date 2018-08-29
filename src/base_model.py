@@ -1,4 +1,4 @@
-""" Module implementing the base class model for all our future image-only, text-only, and image-text models
+""" Module implementing the base class model for all our future image-only, text-only, and image-text models.
 """
 
 import os
@@ -19,15 +19,24 @@ from global_hyperparams import NUM_CLASSES, ModelType, batch_size_dict, decay_le
 class BaseModel(object):
     """ Base model class for all text-only, image-only, and image-text based models
 
-        Has abstract method _train_helper_SGD that should implement the SGD step for each derived model
+        Has abstract method _train_helper_SGD that should implement the SGD step for each derived model.
     """
 
     def __init__(self, model_type, model_name, is_trainable=True, is_primary_model=True, config=None):
-        """
-        :param model_type: ModelType Enum
+        """Set and define attributes across all models
+        
+        Parameters
+        ----------
+        :param model_type: ModelType Enum, 
+            ModelType.text_only | ModelType.image_only | ModelType.image_text
+        
         :param model_name: ModelName Enum
+            Possible values can be seen in the global_hyperparams.py file
+        
         :param is_trainable: bool, whether weights can be updated
+        
         :param is_primary_model: bool, whether this model's output will be used for the final task
+        
         :param config: dict, containing various parameter name-value pairs. Used for writing config file.
         """
         super(BaseModel, self).__init__()
@@ -108,16 +117,24 @@ class BaseModel(object):
         self.train_writer = None
 
     def train(self, train_ids, train_labels, train_texts, val_ids, val_labels, val_texts, retrain_model_filename=None):
-        """ Train the model on given data, saving model checkpoints and log files.
-        :param train_ids: np.array, self-explanatory
-        :param train_labels: np.array
-        :param train_texts: np.array of np.arrays
-        :param val_ids: np.array
-        :param val_labels: np.array
-        :param val_texts: np.array of np.arrays
-        :param retrain_model_filename: str, if None, model is trained from scratch, else this param states where the
-            ckpt file resides, and model is further trained from that ckpt
-        :return: None
+        """Train the model on given data, saving model checkpoints and log files.
+        
+        Parameters
+        ----------
+        :param train_ids: array-like, of shape [NUM_TRAIN_SAMPLES] and type int
+
+        :param train_labels: array-like, of shape [NUM_TRAIN_SAMPLES, NUM_CLASSES] and type int
+
+        :param train_texts: array-like, of shape [NUM_TRAIN_SAMPLES, TEXT_LENGTH] and type int
+
+        :param val_ids: array-like, of shape [NUM_VAL_SAMPLES] and type int
+
+        :param val_labels: array-like, of shape [NUM_VAL_SAMPLES, NUM_CLASSES] and type int
+
+        :param val_texts: array-like, of shape [NUM_VAL_SAMPLES, TEXT_LENGTH] and type int
+
+        :param retrain_model_filename: str, if None, model is trained from scratch,
+            Else this param states where the ckpt file resides. The model is further trained from that ckpt.
         """
         if self.model_type != ModelType.text_only:
             iterator_train = get_dataset_iterator_from_tfrecords(data_type='train',
@@ -158,11 +175,18 @@ class BaseModel(object):
         sess.close()
 
     def test(self, date, num_epochs, test_ids, test_labels, test_texts):
-        """
+        """Run prediction on the test data by restoring a pre-trained model
+
+        Parameters
+        ----------
         :param date: str, folder name (timestamp) from which to retrieve pre-trained model
+
         :param num_epochs: int, the number of epochs for the pre-trained model
+
         :param test_ids: np.array of shape = [test_size], contain question ids in test set
+
         :param test_labels: np.array of shape = [test_size, NUM_CLASSES]
+
         :param test_texts: np.array of shape = [test_size, TEXT_LENGTH]
         """
         print("\nStarting to test %s model" % self.model_name.name)
@@ -192,7 +216,7 @@ class BaseModel(object):
             self._write_results_to_file(conf_matrix, date, labels, results, test_ids, test_accuracy)
 
     def retrain(self, date, num_epochs, train_ids, train_labels, train_texts, val_ids, val_labels, val_texts):
-        """ Load a pre-trained model, and start retraining it."""
+        """Load a pre-trained model, and start retraining it."""
         print("\nStarting to retrain %s model\n" % self.model_name.name)
         # This is the name under which the model usually gets stored
         model_filename = get_stored_checkpoint_filename(model_type=self.model_type,
@@ -204,19 +228,19 @@ class BaseModel(object):
     def _train_helper_SGD(self, sess, train_writer, train_ids, train_labels, train_texts,
                           val_ids, val_labels, val_texts, iterator_train_init, next_element_train, iterator_val_init,
                           next_element_val):
-        """ Abstract method """
+        """Abstract method"""
         raise NotImplementedError
 
     def _run_tests(self, sess, test_ids, test_labels, test_texts, iterator_test_init, next_element_test):
-        """ Abstract method """
+        """Abstract method"""
         raise NotImplementedError
 
     def _write_results_to_file(self, conf_matrix, date, labels, results, test_ids, test_accuracy):
-        """
-        Write two files: test_logits.tsv and test_result.tsv.
+        """Write two files: test_logits.tsv and test_result.tsv.
+
         First one will contain the predictions for each sample,
+
         Second contains confusion matrix for the categories and final accuracy.
-        :return: None
         """
         print('\nWriting results to file ...')
 
@@ -328,9 +352,13 @@ class BaseModel(object):
         print('Completed %s object construction.' % self.model_name.name)
 
     def restore_mid_training(self, sess, num_epochs):
-        """ Used to restore a pre-trained model while training - specifically when validation accuracy has decreased,
+        """Restore a pre-trained model while training - specifically when validation accuracy has decreased,
             and we retore the best model so far, and run training with reduced learning rate.
+
+        Parameters
+        ----------
         :param sess: tf.Session() object
+
         :param num_epochs: int, the best model's epoch number
         """
         vars_to_restore = [var for var in tf.global_variables() if 'learning_rate_var' not in var.name]
@@ -340,13 +368,17 @@ class BaseModel(object):
         self.restore_model_from_filename(sess, model_filename=model_filename, saver=saver)
 
     def restore_model(self, sess, date, num_epochs, saver=None):
-        """
-        Instantiate a tf.train.Saver object and restore saved model at model_filename through it
+        """Instantiate a tf.train.Saver object and restore saved model at model_filename through it
+
+        Parameters
+        ----------
         :param sess: tensorflow.Session object, current open session
+
         :param date: str, folder name timestamp where the model is stored
+
         :param num_epochs: int or str, the epoch number from which model is to be restored
+
         :param saver: tf.train.Saver() object
-        :return: None, the weights in current session are restored from the ckpt file
         """
         # This is the name under which the model usually gets stored
         model_filename = get_stored_checkpoint_filename(model_type=self.model_type,
@@ -355,36 +387,42 @@ class BaseModel(object):
 
     @staticmethod
     def restore_model_from_filename(sess, model_filename, saver=None):
-        """
-        Instantiate a tf.train.Saver object and restore saved model at model_filename through it
+        """Instantiate a tf.train.Saver object and restore saved model at model_filename through it
+
+        Parameters
+        ----------
         :param sess: tensorflow.Session object, current open session
+
         :param model_filename: str, the name under which the model usually gets stored
+
         :param saver: tf.train.Saver() object
-        :return: None, the weights in current session are restored from the ckpt file
+
         """
         print("\nRestoring model from %s ..." % model_filename)
         if saver is None:
             vars_to_restore = tf.global_variables()
             saver = tf.train.Saver(vars_to_restore)
 
-        # if self.global_variable_init is None:
-        #     self.global_variable_init = tf.global_variables_initializer()
-        # sess.run(self.global_variable_init)
-
-        # if self.global_variable_init is not None:
-        #     sess.run(self.global_variable_init)
         saver.restore(sess, model_filename)
         print("Done restoring model.")
 
     def _train_setup(self, train_ids, val_ids, batch_size):
-        """
-        Setup training by printing preliminary information, making reqd directories, initializing tf session,
+        """Setup training by printing preliminary information, making reqd directories, initializing tf session,
         and making required log file. Return the tf.Session object and opened log file handle.
+
         P.S: Please remember to close the returned sess handle, the code structure was not apt for a "with" clause.
+
+        Parameters
+        ----------
         :param train_ids: np.array of ints
+
         :param val_ids: np.array of ints
+
         :param batch_size: int
-        :return: [tf.Session() object, file_handle]
+
+        Returns
+        -------
+        sess: [tf.Session() object, file_handle]
         """
         # Make directory to store checkpoints.
         os.makedirs(self.checkpoint_dir)
@@ -429,7 +467,7 @@ class BaseModel(object):
         pass
 
     def _write_config_file(self):
-        """ Write the configuration file for the model. """
+        """Write the configuration file for the model"""
         with open(self.checkpoint_dir + "config", "w") as handle:
             for key, value in global_config.iteritems():
                 handle.write("%-25s %-s\n" % (key, value))
