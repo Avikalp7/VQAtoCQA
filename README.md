@@ -19,7 +19,9 @@ In this repository, we share the models we implemented. From the paper, we have:
 Our inheritance hierarchy is represented in a simplified manner by:
 ![](readme_material/hierarchy.png)
 
-The instructions for running are provided in the file *run.py*.
+(The yellow links imply that the model acts as a component of the linked model.)
+
+The instructions for running different models are provided in the file *run.py*.
 
 Running the code on your own custom dataset requires change of file pathnames and the data size values.
 
