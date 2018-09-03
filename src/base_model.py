@@ -1,4 +1,4 @@
-""" Module implementing the base class model for all our future image-only, text-only, and image-text models.
+""" Module implementing the base class model for  image-only, text-only, and image-text models
 """
 
 import os
@@ -17,26 +17,23 @@ from global_hyperparams import NUM_CLASSES, ModelType, batch_size_dict, decay_le
 
 
 class BaseModel(object):
-    """ Base model class for all text-only, image-only, and image-text based models
+    """Base model class for all text-only, image-only, and image-text based models
 
-        Has abstract method _train_helper_SGD that should implement the SGD step for each derived model.
+        Has abstract method _train_helper_SGD that should implement the mini-batch GD step for each derived model
     """
 
     def __init__(self, model_type, model_name, is_trainable=True, is_primary_model=True, config=None):
-        """Set and define attributes across all models
-        
+        """
         Parameters
         ----------
-        :param model_type: ModelType Enum, 
-            ModelType.text_only | ModelType.image_only | ModelType.image_text
-        
+        :param model_type: ModelType Enum
+
         :param model_name: ModelName Enum
-            Possible values can be seen in the global_hyperparams.py file
-        
+
         :param is_trainable: bool, whether weights can be updated
-        
+
         :param is_primary_model: bool, whether this model's output will be used for the final task
-        
+
         :param config: dict, containing various parameter name-value pairs. Used for writing config file.
         """
         super(BaseModel, self).__init__()
@@ -61,12 +58,16 @@ class BaseModel(object):
             'batch_size': batch_size_dict[self.model_type],
             'learning_rate': learning_rate_dict[self.model_type],
         }
+
+        # Decide the learning rate config
         if scale_learning_rate:
             self.model_type_config['scale_epochs_dict'] = scale_epochs_dict[self.model_type]
             self.model_type_config['scale_factors_dict'] = scale_factors_dict[self.model_type]
         if decay_learning_rate:
             self.model_type_config['DECAY_STEP_LEARNING_RATE'] = DECAY_STEP_LEARNING_RATE
             self.model_type_config['DECAY_RATE_LEARNING_RATE'] = DECAY_RATE_LEARNING_RATE
+
+        # Other config params
         if self.model_type == ModelType.image_text:
             self.model_type_config['best_date'] = best_date
             self.model_type_config['best_epochs'] = best_epochs
@@ -117,24 +118,24 @@ class BaseModel(object):
         self.train_writer = None
 
     def train(self, train_ids, train_labels, train_texts, val_ids, val_labels, val_texts, retrain_model_filename=None):
-        """Train the model on given data, saving model checkpoints and log files.
-        
+        """ Train the model on given data, saving model checkpoints and log files.
+
         Parameters
         ----------
-        :param train_ids: array-like, of shape [NUM_TRAIN_SAMPLES] and type int
+        :param train_ids: np.array, self-explanatory
 
-        :param train_labels: array-like, of shape [NUM_TRAIN_SAMPLES, NUM_CLASSES] and type int
+        :param train_labels: np.array
 
-        :param train_texts: array-like, of shape [NUM_TRAIN_SAMPLES, TEXT_LENGTH] and type int
+        :param train_texts: np.array of np.arrays
 
-        :param val_ids: array-like, of shape [NUM_VAL_SAMPLES] and type int
+        :param val_ids: np.array
 
-        :param val_labels: array-like, of shape [NUM_VAL_SAMPLES, NUM_CLASSES] and type int
+        :param val_labels: np.array
 
-        :param val_texts: array-like, of shape [NUM_VAL_SAMPLES, TEXT_LENGTH] and type int
+        :param val_texts: np.array of np.arrays
 
-        :param retrain_model_filename: str, if None, model is trained from scratch,
-            Else this param states where the ckpt file resides. The model is further trained from that ckpt.
+        :param retrain_model_filename: str, if None, model is trained from scratch, else this param states where the
+            ckpt file resides, and model is further trained from that ckpt
         """
         if self.model_type != ModelType.text_only:
             iterator_train = get_dataset_iterator_from_tfrecords(data_type='train',
@@ -175,7 +176,7 @@ class BaseModel(object):
         sess.close()
 
     def test(self, date, num_epochs, test_ids, test_labels, test_texts):
-        """Run prediction on the test data by restoring a pre-trained model
+        """Run prediction on test set mini-batches
 
         Parameters
         ----------
@@ -216,7 +217,7 @@ class BaseModel(object):
             self._write_results_to_file(conf_matrix, date, labels, results, test_ids, test_accuracy)
 
     def retrain(self, date, num_epochs, train_ids, train_labels, train_texts, val_ids, val_labels, val_texts):
-        """Load a pre-trained model, and start retraining it."""
+        """ Load a pre-trained model, and start retraining it."""
         print("\nStarting to retrain %s model\n" % self.model_name.name)
         # This is the name under which the model usually gets stored
         model_filename = get_stored_checkpoint_filename(model_type=self.model_type,
@@ -228,19 +229,19 @@ class BaseModel(object):
     def _train_helper_SGD(self, sess, train_writer, train_ids, train_labels, train_texts,
                           val_ids, val_labels, val_texts, iterator_train_init, next_element_train, iterator_val_init,
                           next_element_val):
-        """Abstract method"""
+        """Abstract method """
         raise NotImplementedError
 
     def _run_tests(self, sess, test_ids, test_labels, test_texts, iterator_test_init, next_element_test):
-        """Abstract method"""
+        """Abstract method """
         raise NotImplementedError
 
     def _write_results_to_file(self, conf_matrix, date, labels, results, test_ids, test_accuracy):
         """Write two files: test_logits.tsv and test_result.tsv.
 
-        First one will contain the predictions for each sample,
+        The first file will contain the predictions for each sample,
 
-        Second contains confusion matrix for the categories and final accuracy.
+        The second will have the confusion matrix for the categories and final accuracy.
         """
         print('\nWriting results to file ...')
 
@@ -352,7 +353,7 @@ class BaseModel(object):
         print('Completed %s object construction.' % self.model_name.name)
 
     def restore_mid_training(self, sess, num_epochs):
-        """Restore a pre-trained model while training - specifically when validation accuracy has decreased,
+        """Used to restore a pre-trained model while training - specifically when validation accuracy has decreased,
             and we retore the best model so far, and run training with reduced learning rate.
 
         Parameters
@@ -379,6 +380,10 @@ class BaseModel(object):
         :param num_epochs: int or str, the epoch number from which model is to be restored
 
         :param saver: tf.train.Saver() object
+
+        Returns
+        -------
+        :return: None, the weights in current session are restored from the ckpt file
         """
         # This is the name under which the model usually gets stored
         model_filename = get_stored_checkpoint_filename(model_type=self.model_type,
@@ -397,6 +402,9 @@ class BaseModel(object):
 
         :param saver: tf.train.Saver() object
 
+        Returns
+        -------
+        :return: None, the weights in current session are restored from the ckpt file
         """
         print("\nRestoring model from %s ..." % model_filename)
         if saver is None:
@@ -407,22 +415,14 @@ class BaseModel(object):
         print("Done restoring model.")
 
     def _train_setup(self, train_ids, val_ids, batch_size):
-        """Setup training by printing preliminary information, making reqd directories, initializing tf session,
+        """
+        Setup training by printing preliminary information, making reqd directories, initializing tf session,
         and making required log file. Return the tf.Session object and opened log file handle.
-
         P.S: Please remember to close the returned sess handle, the code structure was not apt for a "with" clause.
-
-        Parameters
-        ----------
         :param train_ids: np.array of ints
-
         :param val_ids: np.array of ints
-
         :param batch_size: int
-
-        Returns
-        -------
-        sess: [tf.Session() object, file_handle]
+        :return: [tf.Session() object, file_handle]
         """
         # Make directory to store checkpoints.
         os.makedirs(self.checkpoint_dir)
@@ -459,8 +459,6 @@ class BaseModel(object):
         self.global_variable_init = tf.global_variables_initializer()
         with tf.Session() as sess:
             self.restore_model(sess, date, num_epochs, saver)
-            # self.restore_base_models(sess)
-            # tf.get_default_graph().finalize()
             self._run_validation_test(sess, val_ids, val_labels, val_texts, iterator_validation_init, next_element_val)
 
     def _run_validation_test(self, sess, val_ids, val_labels, val_texts, iterator_validation, next_element_val):
@@ -519,7 +517,7 @@ class BaseModel(object):
                 self.restore_mid_training(sess=sess, num_epochs=best_epoch)
                 self.learning_rate.assign(self.learning_rate / 2.).eval(session=sess)
 
-        # early_stop_bool=True for early stopping if we have more than 15 epochs,
-        # and less than min_increment over last ten epochs
+        # The var early_stop_bool=True for early stopping if we have more than 15 epochs,
+        # And less than min_increment over last ten epochs
         early_stop_bool = (len(val_acc_history) > 15) and (val_acc_history[-1] < (val_acc_history[-10] + min_increment))
         return early_stop_bool, epochs_with_current_lrate

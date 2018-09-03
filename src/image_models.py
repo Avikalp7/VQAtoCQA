@@ -1,8 +1,8 @@
 """Module implementing image-based models for category classification.
 
-This module's documentation is out of date.
-
 The only model from this module used in our paper is ResNet.
+
+TODO: Add more documentation in this module
 """
 # Copyright (C) 2018 Yahoo Japan Corporation (Licensed under CC BY-NC-SA 4.0)
 # https://creativecommons.org/licenses/by-nc-sa/4.0/
